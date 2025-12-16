@@ -10,6 +10,10 @@ vim.opt.tabstop     = 3
 vim.opt.shiftwidth  = 3     
 -- How many spaces <Tab> inserts in insert mode
 vim.opt.softtabstop = 3     
+-- Use comma a leader key
+vim.g.mapleader = ","
+-- Normal mode: Space starts a forward search
+vim.keymap.set("n", "<Space>", "/", { noremap = true, silent = false })
 
 if vim.g.vscode then
 	-- Running inside VS Code
@@ -25,12 +29,9 @@ else
 	  Plug 'dracula/vim', { 'as': 'dracula' }
 	  Plug 'nvim-lua/plenary.nvim'
 	  Plug 'nvim-telescope/telescope.nvim'
-    Plug 'nfvs/vim-perforce'
+      Plug 'nfvs/vim-perforce'
 	  call plug#end()
 	]])
-
-	-- Use comma a leader key
-	vim.g.mapleader = ","
 
 	-- Configure Telescope
 	local builtin = require('telescope.builtin')
