@@ -73,6 +73,23 @@ else
           require("nvim-tree").setup({})
         end,
       },
+      {
+        "nvim-lualine/lualine.nvim",
+        dependencies = { "nvim-tree/nvim-web-devicons" }, -- optional icons
+        config = function()
+          require("lualine").setup({
+            options = {
+              theme = "catppuccin",
+              icons_enabled = true,
+              globalstatus = true, -- single statusline across splits (nvim >= 0.7)
+
+              section_separators = { left = "", right = "" },
+              component_separators = "",
+            },
+          })
+        end,
+        extensions = { "quickfix", "nvim-tree", "toggleterm", "lazy" },
+      },
    }) -- plugin spec format and setup are per lazy.nvim docs [web:1][web:51]
 
    require("catppuccin").setup({
@@ -93,3 +110,4 @@ else
    vim.keymap.set("n", "<leader>fb", builtin.buffers,    { desc = "Telescope buffers" })
    vim.keymap.set("n", "<leader>fh", builtin.help_tags,  { desc = "Telescope help tags" })
 end
+
