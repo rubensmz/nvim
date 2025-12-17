@@ -11,13 +11,10 @@ vim.opt.tabstop = 3
 vim.opt.shiftwidth = 3
 -- How many spaces <Tab> inserts in insert mode
 vim.opt.softtabstop = 3
-
 -- Use comma as leader key
 vim.g.mapleader = ","
-
 -- Normal mode: Space starts a forward search
 vim.keymap.set("n", "<Space>", "/", { noremap = true, silent = false })
-
 -- Case-insensitive by default...
 vim.o.ignorecase = true
 -- ...but if the search pattern has any uppercase letter, make it case-sensitive
@@ -51,8 +48,10 @@ else
          "nvim-telescope/telescope.nvim",
          dependencies = { "nvim-lua/plenary.nvim" },
       },
+
       -- Perforce
       { "nfvs/vim-perforce" },
+
       -- Theme (load early, don't lazy-load)
       {
          "catppuccin/nvim",
@@ -63,11 +62,29 @@ else
             vim.cmd.colorscheme("catppuccin-mocha")
          end,
       },
+      {
+        "nvim-tree/nvim-tree.lua",
+        version = "*",
+        lazy = false,
+        dependencies = {
+          "nvim-tree/nvim-web-devicons", -- optional, for file icons
+        },
+        config = function()
+          require("nvim-tree").setup({})
+        end,
+      },
    }) -- plugin spec format and setup are per lazy.nvim docs [web:1][web:51]
 
    require("catppuccin").setup({
       auto_integrations = true,
    })
+
+   -- Disable netrw
+   vim.g.loaded_netrw = 1
+   vim.g.loaded_netrwPlugin = 1
+
+   vim.keymap.set("n", "<leader>e", "<cmd>NvimTreeToggle<CR>", { desc = "Toggle file tree" })
+   vim.keymap.set("n", "<leader>o", "<cmd>NvimTreeFindFile<CR>", { desc = "Reveal current file in tree" })
 
    -- Configure Telescope (safe to require after lazy.setup)
    local builtin = require("telescope.builtin")
