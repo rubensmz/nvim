@@ -14,6 +14,10 @@ vim.opt.softtabstop = 3
 vim.g.mapleader = ","
 -- Normal mode: Space starts a forward search
 vim.keymap.set("n", "<Space>", "/", { noremap = true, silent = false })
+-- Case-insensitive by default...
+vim.o.ignorecase = true
+-- ...but if the search pattern has any uppercase letter, make it case-sensitive
+vim.o.smartcase  = true
 
 if vim.g.vscode then
 	-- Running inside VS Code
