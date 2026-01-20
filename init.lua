@@ -1,4 +1,8 @@
 
+-- Better colors & always show tabline (bufferline lives here)
+vim.opt.termguicolors = true
+vim.opt.showtabline = 2
+
 -- Set relative numbers
 vim.opt.relativenumber = true
 -- Show absolute line number for current line
@@ -19,6 +23,9 @@ vim.keymap.set("n", "<Space>", "/", { noremap = true, silent = false })
 vim.o.ignorecase = true
 -- ...but if the search pattern has any uppercase letter, make it case-sensitive
 vim.o.smartcase = true
+-- Clear search highlight
+vim.keymap.set("n", "<leader><CR>", "<cmd>nohlsearch<CR>", { silent = true, desc = "Clear search highlight" })
+
 
 if vim.g.vscode then
    -- Running inside VS Code
@@ -62,17 +69,21 @@ else
             vim.cmd.colorscheme("catppuccin-mocha")
          end,
       },
+
+      -- File explorer
       {
         "nvim-tree/nvim-tree.lua",
         version = "*",
         lazy = false,
         dependencies = {
-          "nvim-tree/nvim-web-devicons", -- optional, for file icons
+          "nvim-tree/nvim-web-devicons", -- icons
         },
         config = function()
           require("nvim-tree").setup({})
         end,
       },
+
+      -- Statusline
       {
         "nvim-lualine/lualine.nvim",
         dependencies = { "nvim-tree/nvim-web-devicons" }, -- optional icons
@@ -90,6 +101,32 @@ else
         end,
         extensions = { "quickfix", "nvim-tree", "toggleterm", "lazy" },
       },
+
+      -- Bufferline: show buffers in the tabline (top bar)
+      {
+        "akinsho/bufferline.nvim",
+        version = "*",
+        dependencies = { "nvim-tree/nvim-web-devicons" },
+        config = function()
+          require("bufferline").setup({
+            options = {
+              mode = "buffers",                 -- show buffers, not tabs
+              always_show_bufferline = true,
+              show_buffer_close_icons = false,
+              show_close_icon = false,
+              separator_style = "slant",        -- "slant" | "thin" | "padded_slant" | etc.
+              diagnostics = false,              -- set to "nvim_lsp" if you want LSP diagnostics
+              offsets = {
+                { filetype = "NvimTree", text = "Explorer", text_align = "left" },
+              },
+            },
+          })
+
+          -- Keymaps: cycle buffers with Tab / Shift-Tab
+          vim.keymap.set("n", "<Tab>", "<Cmd>BufferLineCycleNext<CR>", { silent = true, desc = "Next buffer" })
+          vim.keymap.set("n", "<S-Tab>", "<Cmd>BufferLineCyclePrev<CR>", { silent = true, desc = "Prev buffer" })
+        end,
+      },
    }) -- plugin spec format and setup are per lazy.nvim docs [web:1][web:51]
 
    require("catppuccin").setup({
@@ -100,6 +137,7 @@ else
    vim.g.loaded_netrw = 1
    vim.g.loaded_netrwPlugin = 1
 
+   -- nvim-tree keymaps
    vim.keymap.set("n", "<leader>e", "<cmd>NvimTreeToggle<CR>", { desc = "Toggle file tree" })
    vim.keymap.set("n", "<leader>o", "<cmd>NvimTreeFindFile<CR>", { desc = "Reveal current file in tree" })
 
@@ -110,4 +148,3 @@ else
    vim.keymap.set("n", "<leader>fb", builtin.buffers,    { desc = "Telescope buffers" })
    vim.keymap.set("n", "<leader>fh", builtin.help_tags,  { desc = "Telescope help tags" })
 end
-
