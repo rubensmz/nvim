@@ -137,6 +137,9 @@ else
    vim.g.loaded_netrw = 1
    vim.g.loaded_netrwPlugin = 1
 
+   -- Choose what buffer close with <leader>bc
+   vim.keymap.set("n", "<leader>bc", "<cmd>BufferLinePickClose<CR>", { desc = "Pick buffer to close" })
+   
    -- nvim-tree keymaps
    vim.keymap.set("n", "<leader>e", "<cmd>NvimTreeToggle<CR>", { desc = "Toggle file tree" })
    vim.keymap.set("n", "<leader>o", "<cmd>NvimTreeFindFile<CR>", { desc = "Reveal current file in tree" })
