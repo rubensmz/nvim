@@ -4,6 +4,15 @@
 
 local M = {}
 
+-- State variables (declare at module level)
+local autoformat_enabled = false
+local diagnostics_active = true
+
+-- Export the state function immediately
+M.is_autoformat_enabled = function()
+   return autoformat_enabled
+end
+
 function M.setup()
    -- Configure Verible LSP using the new vim.lsp.config API
    vim.lsp.config.verible = {
@@ -89,6 +98,26 @@ function M.setup()
          return -- No files found, skip silently
       end
 
+      -- Add UVM paths if UVM_HOME is set
+      local uvm_home = os.getenv("LSP_VERIBLE_UVM_HOME")
+      local uvm_section = ""
+      
+      if uvm_home and uvm_home ~= "" then
+         -- Check if UVM files exist
+         local uvm_pkg = uvm_home .. "/src/uvm_pkg.sv"
+         local uvm_check = io.open(uvm_pkg, "r")
+         
+         if uvm_check then
+            uvm_check:close()
+            uvm_section = "# UVM Library\n" .. 
+                          uvm_home .. "/src/uvm_pkg.sv\n" ..
+                          uvm_home .. "/src/uvm_macros.svh\n\n" ..
+                          "# Project Files\n"
+         end
+      end
+      
+      local final_content = uvm_section .. current_files
+
       -- Check if filelist exists and compare
       local file = io.open(filelist_path, "r")
       local needs_update = true
@@ -96,19 +125,20 @@ function M.setup()
       if file then
          local existing_content = file:read("*a")
          file:close()
-         needs_update = (existing_content ~= current_files)
+         needs_update = (existing_content ~= final_content)
       end
 
       if needs_update then
          -- Write new file list
          local output = io.open(filelist_path, "w")
          if output then
-            output:write(current_files)
+            output:write(final_content)
             output:close()
 
             -- Count files
             local _, file_count = current_files:gsub('\n', '\n')
-            vim.notify('Updated verible.filelist (' .. file_count .. ' files)', vim.log.levels.INFO)
+            local uvm_status = uvm_section ~= "" and " + UVM" or ""
+            vim.notify('Updated verible.filelist (' .. file_count .. ' files' .. uvm_status .. ')', vim.log.levels.INFO)
 
             -- Restart LSP to pick up changes (only if LSP is running)
             local clients = vim.lsp.get_clients({ name = 'verible' })
@@ -144,8 +174,6 @@ function M.setup()
    -- Toggle LSP Diagnostics
    -- ============================================================================
 
-   local diagnostics_active = true
-
    local function toggle_diagnostics()
       diagnostics_active = not diagnostics_active
 
@@ -159,11 +187,10 @@ function M.setup()
    end
 
    vim.keymap.set('n', '<leader>td', toggle_diagnostics, { desc = "Toggle diagnostics" })
+
    -- ============================================================================
    -- Toggle Auto-Format on Save
    -- ============================================================================
-
-   local autoformat_enabled = false  -- Start disabled by default
 
    local function toggle_autoformat()
       autoformat_enabled = not autoformat_enabled
@@ -177,16 +204,10 @@ function M.setup()
 
    vim.keymap.set('n', '<leader>tf', toggle_autoformat, { desc = "Toggle auto-format on save" })
 
-   -- Export the state for use in LspAttach
-   M.is_autoformat_enabled = function()
-      return autoformat_enabled
-   end
-
    -- ============================================================================
    -- Global LSP Keymaps
    -- ============================================================================
 
-   -- Note: Using Ctrl-j/k instead of ]d/[d for Spanish keyboard compatibility
    vim.keymap.set('n', '<leader>d', vim.diagnostic.open_float, { desc = "Show diagnostics" })
    vim.keymap.set('n', '<C-k>', vim.diagnostic.goto_prev, { desc = "Previous diagnostic" })
    vim.keymap.set('n', '<C-j>', vim.diagnostic.goto_next, { desc = "Next diagnostic" })
