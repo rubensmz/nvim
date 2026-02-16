@@ -93,7 +93,7 @@
 | `,lr` | Normal | Rename symbol | Rename across all files |
 | `,lf` | Normal | Format file | Format with Verible |
 | `,la` | Normal | Code actions | Show available code actions |
-| **Auto-save** | - | Format on save | Automatic formatting |
+| `,tf` | Normal | Toggle auto-format | Enable/disable format on save |
 
 ### Diagnostics
 
@@ -185,6 +185,7 @@ The following file extensions are recognized as SystemVerilog/Verilog:
 - `.v` → Verilog
 - `.sv` → SystemVerilog
 - `.svh` → SystemVerilog header
+- `.vh` → Verilog header
 
 ---
 
@@ -194,7 +195,7 @@ The following file extensions are recognized as SystemVerilog/Verilog:
 
 1. **Syntax checking** - Real-time syntax error detection
 2. **Linting** - Style and coding standard violations
-3. **Auto-formatting on save** - Code automatically formatted when saving
+3. **Auto-formatting on save** - OPTIONAL, disabled by default (toggle with `,tf`)
 4. **File list generation** - Automatic creation of `verible.filelist` when opening SystemVerilog files
 
 ### LSP Configuration
@@ -248,6 +249,19 @@ Press `,td` to toggle ALL diagnostic displays:
 
 Useful for focusing on code without distractions.
 
+### Auto-Format Toggle
+
+Press `,tf` to toggle automatic formatting on save:
+- **Default state:** OFF (disabled)
+- **When enabled:** Code is automatically formatted when saving SystemVerilog files
+- **When disabled:** Manual format still available with `,lf`
+- **Per-session:** Toggle state resets to OFF when restarting NeoVim
+
+**Rationale:** Auto-format is disabled by default to avoid disrupting team workflows where:
+- Not everyone uses the same formatter
+- Working with legacy code that hasn't been formatted
+- Different formatting standards across projects
+
 ---
 
 ## Quick Reference Card
@@ -260,7 +274,8 @@ Useful for focusing on code without distractions.
 | **Search in files** | `,fg` | `:Telescope live_grep` |
 | **Go to definition** | `gd` | - |
 | **Show error details** | `,d` | - |
-| **Format code** | `,lf` | Save file (auto-format) |
+| **Format code** | `,lf` | Manual format anytime |
+| **Toggle auto-format** | `,tf` | Enable/disable format on save |
 | **Rename symbol** | `,lr` | - |
 | **Next buffer** | `Tab` | `:BufferLineCycleNext` |
 | **File tree** | `,e` | `:NvimTreeToggle` |
@@ -285,11 +300,16 @@ Useful for focusing on code without distractions.
 3. **Fix errors:**
    - See red underline → `,d` for details
    - `Ctrl-j` to jump to next error
-   - Fix and save → auto-format applies
+   - Fix and `,lf` to format manually
 
 4. **Refactor:**
    - Cursor on signal → `,lr` to rename everywhere
    - `,lf` to format if needed
+
+5. **Working alone on formatted code:**
+   - Press `,tf` to enable auto-format on save
+   - Save files → automatic formatting applies
+   - Press `,tf` again to disable when working with team
 
 ### File Navigation
 
@@ -325,17 +345,19 @@ LSP formatting uses `,lf` instead (LSP format).
 
 ### Auto-Format Behavior
 
-Code is automatically formatted on save for SystemVerilog files. To format without saving, use `,lf`.
+**Default:** Auto-format on save is **DISABLED** by default.
 
-To disable auto-format, remove this section from `lsp-config.lua`:
-```lua
-vim.api.nvim_create_autocmd('BufWritePre', {
-   buffer = bufnr,
-   callback = function()
-      vim.lsp.buf.format({ bufnr = bufnr, async = false })
-   end,
-})
-```
+**To enable:** Press `,tf` (toggle format). A notification will confirm the state.
+
+**Manual format:** Always available with `,lf` regardless of auto-format state.
+
+**Why disabled by default?**
+- Prevents disruption in team environments
+- Avoids conflicts with different formatting standards
+- Gives you control over when formatting happens
+- Legacy code may not be ready for auto-formatting
+
+The toggle state is per-session and resets to OFF when you restart NeoVim.
 
 ---
 
@@ -347,7 +369,7 @@ vim.api.nvim_create_autocmd('BufWritePre', {
 
 ### LSP Configuration (Modular)
 - **Path:** `~/.config/nvim/lua/lsp-config.lua`
-- **Contents:** LSP setup, Verible configuration, diagnostic settings, auto-generation
+- **Contents:** LSP setup, Verible configuration, diagnostic settings, auto-generation, format toggle
 - **Loading:** Conditionally loaded with `pcall`, won't error if missing
 
 ### Project-Level Configuration
@@ -384,6 +406,10 @@ or press `,vf`
 ```vim
 :lua vim.cmd('edit ' .. vim.lsp.get_log_path())
 ```
+
+### Check Auto-Format State
+The notification when you toggle (`,tf`) shows the current state.
+Auto-format is OFF by default each time you start NeoVim.
 
 ---
 
