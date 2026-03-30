@@ -16,6 +16,8 @@ vim.opt.shiftwidth = 3
 vim.opt.softtabstop = 3
 -- Use comma as leader key
 vim.g.mapleader = ","
+-- Automatic P4edit on save
+vim.g.perforce_open_on_save = 1
 -- Normal mode: Space starts a forward search
 vim.keymap.set("n", "<Space>", "/", { noremap = true, silent = false })
 -- Case-insensitive by default...
@@ -74,6 +76,29 @@ else
          lazy = false,
          priority = 1000,
          config = function()
+            require("catppuccin").setup({
+               auto_integrations = true,
+               highlight_overrides = {
+                  mocha = function(mocha)
+                     return {
+                        WinSeparator              = { fg = mocha.surface1 },
+                        FloatBorder               = { fg = mocha.surface1 },
+                        -- Bufferline slant separators
+                        BufferLineSeparator         = { fg = mocha.surface1 },
+                        BufferLineSeparatorSelected = { fg = mocha.surface1, bg = mocha.surface0 },
+                        BufferLineSeparatorVisible  = { fg = mocha.surface1 },
+                        BufferLineOffsetSeparator   = { fg = mocha.surface1 },
+                        -- Bufferline backgrounds
+                        BufferLineBufferSelected    = { fg = mocha.text,    bg = mocha.surface0 },
+                        -- Bufferline empty background
+                        BufferLineFill              = { bg = mocha.surface1 },
+                        -- NvimTree border
+                        NvimTreeOffset       = { fg = mocha.base, bg = mocha.surface1 },
+                        NvimTreeWinSeparator = { fg = mocha.surface1, bg = mocha.base }, 
+                     }
+                  end,
+               },
+            })
             vim.cmd.colorscheme("catppuccin-mocha")
          end,
       },
@@ -149,56 +174,20 @@ else
          end,
       },
 
-      -- LSP Configuration
+      -- LSP Configuration (conditionally loaded from separate file)
       {
          "neovim/nvim-lspconfig",
          event = { "BufReadPre", "BufNewFile" },
          config = function()
-            -- Configure Verible LSP using the new vim.lsp.config API
-            vim.lsp.config.verible = {
-               cmd = {'verible-verilog-ls', '--rules_config_search'},
-               root_markers = {'.git'},
-               filetypes = {'verilog', 'systemverilog'},
-            }
-
-            -- Enable Verible LSP
-            vim.lsp.enable('verible')
-
-            -- Set up LSP keybindings using LspAttach autocmd
-            vim.api.nvim_create_autocmd('LspAttach', {
-               callback = function(args)
-                  local bufnr = args.buf
-                  local opts = { buffer = bufnr, noremap = true, silent = true }
-
-                  -- vim.keymap.set('n', 'gd', vim.lsp.buf.definition, opts)
-                  -- vim.keymap.set('n', 'gD', vim.lsp.buf.declaration, opts)
-                  -- vim.keymap.set('n', 'K', vim.lsp.buf.hover, opts)
-                  -- vim.keymap.set('n', 'gi', vim.lsp.buf.implementation, opts)
-                  -- vim.keymap.set('n', '<leader>ca', vim.lsp.buf.code_action, opts)
-                  -- vim.keymap.set('n', 'gr', vim.lsp.buf.references, opts)
-                  -- vim.keymap.set('n', '<leader>rn', vim.lsp.buf.rename, opts)
-                  -- vim.keymap.set('n', '<leader>f', function() vim.lsp.buf.format({ async = true }) end, opts)
-               end,
-            })
-
-            -- Configure diagnostic display
-            vim.diagnostic.config({
-               virtual_text = true,
-               signs = true,
-               underline = true,
-               update_in_insert = false,
-               severity_sort = true,
-            })
-
-            -- Diagnostic signs in the gutter
-            local signs = { Error = " ", Warn = " ", Hint = " ", Info = " " }
-            for type, icon in pairs(signs) do
-               local hl = "DiagnosticSign" .. type
-               vim.fn.sign_define(hl, { text = icon, texthl = hl, numhl = hl })
+            -- Try to load custom LSP configuration
+            local ok, lsp_config = pcall(require, "lsp-config")
+            if ok then
+               lsp_config.setup()
+            else
+               vim.notify("LSP config file not found, skipping LSP setup", vim.log.levels.WARN)
             end
          end,
       },
-
 
    }) -- plugin spec format and setup are per lazy.nvim docs
 
@@ -223,11 +212,5 @@ else
    vim.keymap.set("n", "<leader>fg", builtin.live_grep,  { desc = "Telescope live grep" })
    vim.keymap.set("n", "<leader>fb", builtin.buffers,    { desc = "Telescope buffers" })
    vim.keymap.set("n", "<leader>fh", builtin.help_tags,  { desc = "Telescope help tags" })
-
-   -- LSP keymaps (global, not buffer-specific)
-   vim.keymap.set('n', '<leader>d', vim.diagnostic.open_float, { desc = "Show diagnostics" })
-   vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, { desc = "Previous diagnostic" })
-   vim.keymap.set('n', ']d', vim.diagnostic.goto_next, { desc = "Next diagnostic" })
-   vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = "Diagnostics to loclist" })
 end
 
