@@ -14,10 +14,14 @@ vim.opt.tabstop = 3
 vim.opt.shiftwidth = 3
 -- How many spaces <Tab> inserts in insert mode
 vim.opt.softtabstop = 3
+-- Auto-checkout file from Perforce when first modified (FileChangedRO event)
+vim.g.perforce_open_on_change = 1
+-- Auto-checkout file from Perforce when saving a read-only file (:w!)
+vim.g.perforce_open_on_save = 1
+-- Skip confirmation prompt and checkout immediately
+vim.g.perforce_prompt_on_open = 0
 -- Use comma as leader key
 vim.g.mapleader = ","
--- Automatic P4edit on save
-vim.g.perforce_open_on_save = 1
 -- Normal mode: Space starts a forward search
 vim.keymap.set("n", "<Space>", "/", { noremap = true, silent = false })
 -- Case-insensitive by default...
