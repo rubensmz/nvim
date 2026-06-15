@@ -68,6 +68,31 @@ else
       {
          "nvim-telescope/telescope.nvim",
          dependencies = { "nvim-lua/plenary.nvim" },
+         config = function()
+            require("telescope").setup({
+               -- defaults = {
+               --    follow = true,
+               --    hidden = true,
+               --    file_ignore_patterns = {
+               --       "%.git/",
+               --       "node_modules/",
+               --       "%.o$",
+               --       "%.so$",
+               --    },
+               --    path_display = { "truncate" },    -- shorten long paths
+               --    sorting_strategy = "descending",   -- results top-to-bottom
+               -- },
+               -- pickers = {
+               --    find_files = {
+               --       follow = true,
+               --       no_ignore = false,             -- respect .gitignore
+               --    },
+               --    live_grep = {
+               --       additional_args = { "--hidden" },
+               --    },
+               -- },
+            })
+         end
       },
 
       -- Perforce
