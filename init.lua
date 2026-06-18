@@ -46,10 +46,16 @@ if vim.g.vscode then
 else
    -- Plain Neovim
 
-   -- Bootstrap lazy.nvim
-   local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+   -- Disable netrw early (before plugin loading)
+   vim.g.loaded_netrw = 1
+   vim.g.loaded_netrwPlugin = 1
+
+   -- Bootstrap lazy.nvim (use local disk to avoid NFS latency)
+   local lazy_base = "/tmp/" .. (os.getenv("USER") or "nvim") .. "/nvim"
+   local lazypath = lazy_base .. "/lazy/lazy.nvim"
    local uv = vim.uv or vim.loop
    if not uv.fs_stat(lazypath) then
+      vim.fn.mkdir(lazy_base .. "/lazy", "p")
       vim.fn.system({
          "git",
          "clone",
@@ -61,36 +67,55 @@ else
    end
    vim.opt.rtp:prepend(lazypath)
 
+   -- ShaDa, swap, and undo on local disk
+   vim.opt.shadafile = lazy_base .. "/shada/main.shada"
+   vim.fn.mkdir(lazy_base .. "/shada", "p")
+   vim.opt.directory = lazy_base .. "/swap//"
+   vim.fn.mkdir(lazy_base .. "/swap", "p")
+   vim.opt.undodir = lazy_base .. "/undo//"
+   vim.fn.mkdir(lazy_base .. "/undo", "p")
+
    -- Plugins
+   local lazy_root = "/tmp/" .. (os.getenv("USER") or "nvim") .. "/nvim/lazy"
+   vim.fn.mkdir(lazy_root, "p")
+
    require("lazy").setup({
 
       -- Telescope + dependency
       {
          "nvim-telescope/telescope.nvim",
+         cmd = "Telescope",
+         keys = {
+            { "<leader>ff", function() require("telescope.builtin").find_files() end, desc = "Telescope find files" },
+            { "<leader>fg", function() require("telescope.builtin").live_grep() end, desc = "Telescope live grep" },
+            { "<leader>fb", function() require("telescope.builtin").buffers() end, desc = "Telescope buffers" },
+            { "<leader>fh", function() require("telescope.builtin").help_tags() end, desc = "Telescope help tags" },
+         },
          dependencies = { "nvim-lua/plenary.nvim" },
          config = function()
+            local actions = require("telescope.actions")
             require("telescope").setup({
-               -- defaults = {
-               --    follow = true,
-               --    hidden = true,
-               --    file_ignore_patterns = {
-               --       "%.git/",
-               --       "node_modules/",
-               --       "%.o$",
-               --       "%.so$",
-               --    },
-               --    path_display = { "truncate" },    -- shorten long paths
-               --    sorting_strategy = "descending",   -- results top-to-bottom
-               -- },
-               -- pickers = {
-               --    find_files = {
-               --       follow = true,
-               --       no_ignore = false,             -- respect .gitignore
-               --    },
-               --    live_grep = {
-               --       additional_args = { "--hidden" },
-               --    },
-               -- },
+               defaults = {
+                  find_command = { "fd", "--type", "f", "--hidden", "--exclude", ".git" },
+                  vimgrep_arguments = {
+                     "rg", "--color=never", "--no-heading", "--with-filename",
+                     "--line-number", "--column", "--smart-case", "--hidden",
+                     "--glob", "!.git/",
+                  },
+                  mappings = {
+                     n = {
+                        ["dd"] = actions.delete_buffer,
+                     },
+                     i = {
+                        ["<C-d>"] = actions.delete_buffer,
+                     },
+                  },
+               },
+               pickers = {
+                  find_files = {
+                     find_command = { "fd", "--type", "f", "--hidden", "--exclude", ".git" },
+                  },
+               },
             })
          end
       },
@@ -106,7 +131,15 @@ else
          priority = 1000,
          config = function()
             require("catppuccin").setup({
-               auto_integrations = true,
+               default_integrations = false,
+               integrations = {
+                  bufferline = true,
+                  nvimtree = true,
+                  telescope = true,
+                  treesitter = true,
+                  lsp_trouble = true,
+                  native_lsp = { enabled = true },
+               },
                highlight_overrides = {
                   mocha = function(mocha)
                      return {
@@ -136,12 +169,18 @@ else
       {
          "nvim-tree/nvim-tree.lua",
          version = "*",
-         lazy = false,
+         cmd = { "NvimTreeToggle", "NvimTreeOpen", "NvimTreeFindFile" },
+         keys = {
+            { "<leader>e", "<cmd>NvimTreeToggle<CR>", desc = "Toggle file tree" },
+            { "<leader>o", "<cmd>NvimTreeFindFile<CR>", desc = "Reveal current file in tree" },
+         },
          dependencies = {
             "nvim-tree/nvim-web-devicons", -- icons
          },
          config = function()
             require("nvim-tree").setup({
+               hijack_directories = { enable = false },
+               git = { enable = false },
                on_attach = function(bufnr)
                   local api = require("nvim-tree.api")
 
@@ -203,43 +242,28 @@ else
          end,
       },
 
-      -- LSP Configuration (conditionally loaded from separate file)
-      {
-         "neovim/nvim-lspconfig",
-         event = { "BufReadPre", "BufNewFile" },
-         config = function()
-            -- Try to load custom LSP configuration
-            local ok, lsp_config = pcall(require, "lsp-config")
-            if ok then
-               lsp_config.setup()
-            else
-               vim.notify("LSP config file not found, skipping LSP setup", vim.log.levels.WARN)
-            end
-         end,
+
+
+   }, {
+      root = lazy_root,
+      lockfile = lazy_base .. "/lazy-lock.json",
+      performance = {
+         rtp = {
+            disabled_plugins = {
+               "gzip",
+               "matchit",
+               "matchparen",
+               "netrwPlugin",
+               "tarPlugin",
+               "tohtml",
+               "tutor",
+               "zipPlugin",
+            },
+         },
       },
-
    }) -- plugin spec format and setup are per lazy.nvim docs
-
-   require("catppuccin").setup({
-      auto_integrations = true,
-   })
-
-   -- Disable netrw
-   vim.g.loaded_netrw = 1
-   vim.g.loaded_netrwPlugin = 1
 
    -- Choose what buffer close with <leader>bc
    vim.keymap.set("n", "<leader>bc", "<cmd>BufferLinePickClose<CR>", { desc = "Pick buffer to close" })
-
-   -- nvim-tree keymaps
-   vim.keymap.set("n", "<leader>e", "<cmd>NvimTreeToggle<CR>", { desc = "Toggle file tree" })
-   vim.keymap.set("n", "<leader>o", "<cmd>NvimTreeFindFile<CR>", { desc = "Reveal current file in tree" })
-
-   -- Configure Telescope (safe to require after lazy.setup)
-   local builtin = require("telescope.builtin")
-   vim.keymap.set("n", "<leader>ff", builtin.find_files, { desc = "Telescope find files" })
-   vim.keymap.set("n", "<leader>fg", builtin.live_grep,  { desc = "Telescope live grep" })
-   vim.keymap.set("n", "<leader>fb", builtin.buffers,    { desc = "Telescope buffers" })
-   vim.keymap.set("n", "<leader>fh", builtin.help_tags,  { desc = "Telescope help tags" })
 end
 
