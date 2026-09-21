@@ -30,7 +30,9 @@ vim.o.ignorecase = true
 vim.o.smartcase = true
 -- Clear search highlight
 vim.keymap.set("n", "<leader><CR>", "<cmd>nohlsearch<CR>", { silent = true, desc = "Clear search highlight" })
-
+-- Highlight trailing whitespaces in red
+vim.api.nvim_set_hl(0, 'ExtraWhitespace', { bg = 'red' })
+vim.cmd([[match ExtraWhitespace /\s\+$/]])
 -- Filetype detection for SystemVerilog/Verilog
 vim.filetype.add({
    extension = {
@@ -96,11 +98,9 @@ else
             local actions = require("telescope.actions")
             require("telescope").setup({
                defaults = {
-                  find_command = { "fd", "--type", "f", "--hidden", "--exclude", ".git" },
                   vimgrep_arguments = {
                      "rg", "--color=never", "--no-heading", "--with-filename",
-                     "--line-number", "--column", "--smart-case", "--hidden",
-                     "--glob", "!.git/",
+                     "--line-number", "--column", "--smart-case",
                   },
                   mappings = {
                      n = {
@@ -113,7 +113,11 @@ else
                },
                pickers = {
                   find_files = {
-                     find_command = { "fd", "--type", "f", "--hidden", "--exclude", ".git" },
+                     find_command = { "fd", "--type", "f" },
+                  },
+                  buffers = {
+                     previewer = false,
+                     sort_mru = true,
                   },
                },
             })
@@ -122,6 +126,15 @@ else
 
       -- Perforce
       { "nfvs/vim-perforce" },
+
+      -- Scope buffers per tab (each tab is a workspace)
+      {
+         "tiagovla/scope.nvim",
+         lazy = false,
+         config = function()
+            require("scope").setup({})
+         end,
+      },
 
       -- Theme (load early, don't lazy-load)
       {
@@ -134,7 +147,7 @@ else
                default_integrations = false,
                integrations = {
                   bufferline = true,
-                  nvimtree = true,
+                  neotree = true,
                   telescope = true,
                   treesitter = true,
                   lsp_trouble = true,
@@ -154,9 +167,8 @@ else
                         BufferLineBufferSelected    = { fg = mocha.text,    bg = mocha.surface0 },
                         -- Bufferline empty background
                         BufferLineFill              = { bg = mocha.surface1 },
-                        -- NvimTree border
-                        NvimTreeOffset       = { fg = mocha.base, bg = mocha.surface1 },
-                        NvimTreeWinSeparator = { fg = mocha.surface1, bg = mocha.base }, 
+                        -- Neo-tree border
+                        NeoTreeWinSeparator  = { fg = mocha.surface1, bg = mocha.base },
                      }
                   end,
                },
@@ -167,32 +179,46 @@ else
 
       -- File explorer
       {
-         "nvim-tree/nvim-tree.lua",
-         version = "*",
-         cmd = { "NvimTreeToggle", "NvimTreeOpen", "NvimTreeFindFile" },
+         "nvim-neo-tree/neo-tree.nvim",
+         branch = "v3.x",
+         cmd = "Neotree",
          keys = {
-            { "<leader>e", "<cmd>NvimTreeToggle<CR>", desc = "Toggle file tree" },
-            { "<leader>o", "<cmd>NvimTreeFindFile<CR>", desc = "Reveal current file in tree" },
+            { "<leader>e", "<cmd>Neotree toggle<CR>", desc = "Toggle file tree" },
+            { "<leader>o", "<cmd>Neotree reveal<CR>", desc = "Reveal current file in tree" },
          },
          dependencies = {
+            "nvim-lua/plenary.nvim",
             "nvim-tree/nvim-web-devicons", -- icons
+            "MunifTanjim/nui.nvim",
          },
          config = function()
-            require("nvim-tree").setup({
-               hijack_directories = { enable = false },
-               git = { enable = false },
-               on_attach = function(bufnr)
-                  local api = require("nvim-tree.api")
-
-                  -- Load all default keybindings first
-                  api.config.mappings.default_on_attach(bufnr)
-                  -- Use + to change root to the directory under cursor
-                  vim.keymap.set('n', '+', api.tree.change_root_to_node, {
-                     buffer = bufnr,
-                     desc = 'Change root to node'
-                  })
-               end,
-
+            require("neo-tree").setup({
+               close_if_last_window = true,
+               enable_git_status = false,
+               default_component_configs = {
+                  symlink_target = { enabled = true },  -- render "name ➛ target"
+               },
+               filesystem = {
+                  bind_to_cwd = false,               -- root independent of :cd
+                  cwd_target = { sidebar = "tab" },  -- per-tab root
+                  follow_current_file = { enabled = false },
+                  use_libuv_file_watcher = false,    -- keep off on NFS
+                  hijack_netrw_behavior = "disabled",
+                  filtered_items = {
+                     visible = true,          -- show filtered items (dimmed)
+                     hide_dotfiles = false,
+                     hide_gitignored = false,
+                     hide_hidden = false,     -- Windows-only hidden attribute
+                  },
+               },
+               window = {
+                  mappings = {
+                     ["+"] = "set_root",
+                     ["-"] = "navigate_up",
+                     ["."] = "noop",
+                     ["<bs>"] = "noop",
+                  },
+               },
             })
          end,
       },
@@ -200,11 +226,11 @@ else
       -- Statusline
       {
          "nvim-lualine/lualine.nvim",
-         dependencies = { "nvim-tree/nvim-web-devicons" }, -- optional icons
+         dependencies = { "nvim-tree/nvim-web-devicons", "catppuccin/nvim" },
          config = function()
             require("lualine").setup({
                options = {
-                  theme = "catppuccin",
+                  theme = require("lualine.themes.catppuccin-mocha"),
                   icons_enabled = true,
                   globalstatus = true, -- single statusline across splits (nvim >= 0.7)
 
@@ -213,7 +239,7 @@ else
                },
             })
          end,
-         extensions = { "quickfix", "nvim-tree", "toggleterm", "lazy" },
+         extensions = { "quickfix", "neo-tree", "toggleterm", "lazy" },
       },
 
       -- Bufferline: show buffers in the tabline (top bar)
@@ -229,9 +255,10 @@ else
                   show_buffer_close_icons = false,
                   show_close_icon = false,
                   separator_style = "slant",        -- "slant" | "thin" | "padded_slant" | etc.
+                  show_tab_indicators = true,       -- clickable tab count on the right
                   diagnostics = "nvim_lsp",         -- show LSP diagnostics in bufferline
                   offsets = {
-                     { filetype = "NvimTree", text = "Explorer", text_align = "left" },
+                     { filetype = "neo-tree", text = "Explorer", text_align = "left" },
                   },
                },
             })
@@ -265,5 +292,13 @@ else
 
    -- Choose what buffer close with <leader>bc
    vim.keymap.set("n", "<leader>bc", "<cmd>BufferLinePickClose<CR>", { desc = "Pick buffer to close" })
+
+   -- Tab management
+   vim.keymap.set("n", "<leader>tn", "<cmd>tabnew<CR>", { desc = "New tab" })
+   vim.keymap.set("n", "<leader>tc", "<cmd>tabclose<CR>", { desc = "Close tab" })
+   vim.keymap.set("n", "<leader>to", "<cmd>tabonly<CR>", { desc = "Only this tab" })
+   for i = 1, 9 do
+      vim.keymap.set("n", "<leader>" .. i, i .. "gt", { desc = "Go to tab " .. i })
+   end
 end
 
